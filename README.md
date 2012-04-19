@@ -31,26 +31,27 @@ Or install it yourself as:
 The `RedisProps` module depends on a `$REDIS_SERVER` variable being set. Keys are prefixed with a namespace
 using `Redis::Namespace` and you end up with a `redis` method usable for operations not built-in to the library.
 
-    class Dog < ActiveRecord::Base
-      include RedisProps
-    
-      redis_props :has_medical_condition do
-        define :fleas, default: false
-      end
-    end
-    
-    > dog = Dog.create(name: "Fido")
-    
-    > dog.has_medical_condition_fleas?
-    false
-    
-    > dog.has_medical_condition_fleas = true
-    
-    > dog = Dog.find_by_name("Fido")
-    
-    > dog.has_medical_condition_fleas?
-    true
-    
+```ruby
+class Dog < ActiveRecord::Base
+  include RedisProps
+
+  redis_props :has_medical_condition do
+    define :fleas, default: false
+  end
+end
+
+> dog = Dog.create(name: "Fido")
+
+> dog.has_medical_condition_fleas?
+false
+
+> dog.has_medical_condition_fleas = true
+
+> dog = Dog.find_by_name("Fido")
+
+> dog.has_medical_condition_fleas?
+true
+```
 
 ## Contributing
 

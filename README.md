@@ -52,6 +52,14 @@ false
 > dog.has_medical_condition_fleas?
 true
 ```
+## TODOS
+These are ranked in order of very likely to get done soon to less likely to get done soon (or maybe not at all.)
+
+* type inference for additional types besides boolean
+* batch saving of attributes instead of instant
+* record locking and transactions
+* use Nest for generating keys
+* use Redis::Objects to wrap types
 
 ## Contributing
 

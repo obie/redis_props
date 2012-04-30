@@ -20,12 +20,9 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency "rspec"
   gem.add_development_dependency "activesupport"
   gem.add_development_dependency "sqlite3"
-  gem.add_development_dependency "activerecord"
-  gem.add_development_dependency "redis-namespace"
   gem.add_development_dependency "pry-nav"
 
   gem.add_runtime_dependency "activesupport"
   gem.add_runtime_dependency "activerecord"
   gem.add_runtime_dependency "redis"
-  gem.add_runtime_dependency "redis-namespace"
 end

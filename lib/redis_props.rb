@@ -1,22 +1,22 @@
 require 'redis_props/version'
-require 'redis-namespace'
+require 'nest'
 require 'active_support/concern'
 require 'active_record'
 
 module RedisProps
   extend ActiveSupport::Concern
-  extend self
 
-  def reset!
-    redis.del(*redis.keys) unless redis.keys.empty?
+  def r
+    self.class.r[id]
   end
-
-  def redis
-    @redis ||= Redis::Namespace.new("redis_props_#{Rails.env}", redis: $REDIS_SERVER)
-  end
+  protected :r
 
   module ClassMethods
-    def redis_props(context_name="", &block)
+    def r
+      @redis_nest ||= Nest.new(name)
+    end
+
+    def redis_props(context_name, &block)
       ctx = RedisPropertyContext.new(context_name)
       ctx.instance_exec(&block)
       ctx.add_methods_to(self)
@@ -30,45 +30,42 @@ module RedisProps
     end
 
     def add_methods_to(klass)
-      @definitions.each do |name, d|
+      @definitions.each do |definition_name, d|
         if (TrueClass === d.options[:default] || FalseClass === d.options[:default])
           kce = <<-end_eval
-            def #{@context_name}_#{name}
-              @#{@context_name}_#{name} ||= begin
-                #puts "Accessing #{klass.name}:#{@context_name}_#{name}:\#{to_param}"
-                r = redis.get("#{klass.name}:#{@context_name}_#{name}:\#{to_param}")
-                r.nil? ? #{d.options[:default].to_s} : (r == "true" || r == "1")
+            def #{@context_name}_#{definition_name}
+              @#{@context_name}_#{definition_name} ||= begin
+                r[:#{@context_name}][:#{definition_name}].get.tap do |result|
+                  result.nil? ? "#{d.options[:default].to_s}" : (result == "true" || result == "1")
+                end
               end
             end
 
-            def #{@context_name}_#{name}?
-              !!#{@context_name}_#{name}
+            def #{@context_name}_#{definition_name}?
+              !!#{@context_name}_#{definition_name}
             end
 
-            def #{@context_name}_#{name}=(val)
-              #puts "Setting #{klass.name}:#{@context_name}_#{name}:\#{to_param} to \#{val}"
-              @#{@context_name}_#{name} = val
-              redis.set "#{klass.name}:#{@context_name}_#{name}:\#{to_param}", val.to_s
+            def #{@context_name}_#{definition_name}=(val)
+              @#{@context_name}_#{definition_name} = val
+              r[:#{@context_name}][:#{definition_name}].set val.to_s
             end
           end_eval
           klass.class_eval kce
         else
           klass.class_eval <<-end_eval
-            def #{@context_name}_#{name}
-              @#{@context_name}_#{name} ||= begin
-                #puts "Accessing #{klass.name}:#{@context_name}_#{name}:\#{to_param}"
-                redis.get("#{klass.name}:#{@context_name}_#{name}:\#{to_param}") || #{d.options[:default]}
+            def #{@context_name}_#{definition_name}
+              @#{@context_name}_#{definition_name} ||= begin
+                [:#{@context_name}][:#{definition_name}].get || "#{d.options[:default]}"
               end
             end
-            def #{@context_name}_#{name}=(val)
-              #puts "Setting #{klass.name}:#{@context_name}_#{name}:\#{to_param} to \#{val}"
-              @#{@context_name}_#{name} = val
-              redis.set("#{klass.name}:#{@context_name}_#{name}:\#{to_param}", val.to_s)
+            def #{@context_name}_#{definition_name}=(val)
+              @#{@context_name}_#{definition_name} = val
+              r[:#{@context_name}][:#{definition_name}].set val.to_s
             end
           end_eval
         end
         klass.class_eval <<-end_eval
-          after_destroy lambda { redis.del("#{klass.name}:#{@context_name}_#{name}:\#{to_param}") }
+          after_destroy lambda { r[:#{@context_name}][:#{definition_name}].del }
         end_eval
       end
     end

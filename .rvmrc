@@ -1,2 +1,0 @@
-rvm 1.9.3
-rvm use --create ruby-1.9.3@redis_props

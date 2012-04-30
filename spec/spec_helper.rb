@@ -9,8 +9,8 @@ module RedisProps
   end
 end
 
-$REDIS_SERVER = Redis.new(db: 13)
+Redis.current = Redis.new(db: 13)
 
 RSpec.configure do |c|
-  c.before(:each) { $REDIS_SERVER.flushdb }
+  c.before(:each) { Redis.current.flushdb }
 end

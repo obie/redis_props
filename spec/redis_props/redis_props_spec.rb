@@ -17,9 +17,17 @@ end
 
 describe Dog do
   context "fleas" do
-    let(:dog) { Dog.create!(name: "Wego") }
+    let(:clean_dog) { Dog.create!(name: "Wego") }
+    let(:dirty_dog) { Dog.create!(name: "Bodiddly") }
+
     it "should not have fleas" do
-      dog.should_not have_medical_condition_fleas
+      clean_dog.should_not have_medical_condition_fleas
+    end
+
+    it "should have fleas if we said it did" do
+      dirty_dog.has_medical_condition_fleas = true
+      dirty_dog = Dog.find_by_name "Bodiddly"
+      dirty_dog.should have_medical_condition_fleas
     end
   end
 end

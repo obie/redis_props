@@ -38,6 +38,10 @@ class User < ActiveRecord::Base
     define :records, default: 0
   end
 
+  props :pets do
+    define :dogs, default: []
+  end
+
   props :stats do
     define :birthday, default: 20.years.ago
     define :temperature, default: 98.7
@@ -121,6 +125,10 @@ describe RedisProps do
       it "works for decimals" do
         user.stats_exact_weight = "230.29320".to_d
         User.find(user.id).stats_exact_weight.should == "230.29320".to_d
+      end
+      it "works for relationships stored in arrays" do
+        user.pets_dogs << clean_dog
+        User.find(user.id).pets_dogs.should include(clean_dog)
       end
     end
   end

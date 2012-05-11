@@ -43,6 +43,7 @@ class User < ActiveRecord::Base
     define :temperature, default: 98.7
     define :last_seen, default: Date.today
     define :pressure_range, default: 70..99
+    define :exact_weight, default: "190.908230984".to_d
   end
 end
 
@@ -79,9 +80,19 @@ describe RedisProps do
     end
 
     context "provide type inference based on default values provided" do
-      it "works for booleans" do
+      it "works for booleans of all kinds" do
         user.flags_weekly_digest = false
-        user.flags_weekly_digest.should == false
+        User.find(user.id).flags_weekly_digest.should == false
+        user.flags_weekly_digest = true
+        User.find(user.id).flags_weekly_digest.should == true
+        user.flags_weekly_digest = 1
+        User.find(user.id).flags_weekly_digest.should == true
+        user.flags_weekly_digest = 0
+        User.find(user.id).flags_weekly_digest.should == false
+        user.flags_weekly_digest = 't'
+        User.find(user.id).flags_weekly_digest.should == true
+        user.flags_weekly_digest = 'f'
+        User.find(user.id).flags_weekly_digest.should == false
       end
       it "works for integers" do
         user.number_of_records = 42
@@ -106,6 +117,10 @@ describe RedisProps do
         new_range = 90..114
         user.stats_pressure_range = new_range
         User.find(user.id).stats_pressure_range.should == new_range
+      end
+      it "works for decimals" do
+        user.stats_exact_weight = "230.29320".to_d
+        User.find(user.id).stats_exact_weight.should == "230.29320".to_d
       end
     end
   end

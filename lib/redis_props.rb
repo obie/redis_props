@@ -88,9 +88,11 @@ module RedisProps
     def self.typecaster(default_value)
       case default_value
       when TrueClass, FalseClass
-        @boolean ||= lambda {|v| v == "true"}
+        @boolean ||= lambda {|v| ActiveRecord::ConnectionAdapters::Column::TRUE_VALUES.include?(v)}
       when Float
         @float ||= lambda {|v| v.to_f }
+      when BigDecimal
+        @decimal ||= lambda {|v| v.to_d }
       when Integer
         @integer ||= lambda {|v| v.to_i }
       when Range

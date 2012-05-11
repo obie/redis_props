@@ -33,6 +33,14 @@ class User < ActiveRecord::Base
   props :flags, touch: :saved_at do
     define :weekly_digest, default: true
   end
+
+  props :number_of do
+    define :records, default: 0
+  end
+
+  props :stats do
+    define :temperature, default: 98.7
+  end
 end
 
 describe RedisProps do
@@ -65,6 +73,21 @@ describe RedisProps do
     it "sets defaults if provided" do
       clean_dog.should have_medical_condition_pants
       clean_dog.should_not have_medical_condition_fleas
+    end
+
+    context "do type inference based on default values provided" do
+      it "works for booleans" do
+        user.flags_weekly_digest = false
+        user.flags_weekly_digest.should == false
+      end
+      it "works for integers" do
+        user.number_of_records = 42
+        User.find(user.id).number_of_records.should == 42
+      end
+      it "works for floats" do
+        user.stats_temperature = 99.9
+        User.find(user.id).stats_temperature.should == 99.9
+      end
     end
   end
 

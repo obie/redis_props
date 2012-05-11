@@ -34,15 +34,14 @@ module RedisProps
     #   This option defaults to +false+.
     #
     def props(context_name, opts={}, &block)
-      PropsContext.new(context_name, self, opts).instance_exec(&block)
+      PropsContext.new(context_name, self, opts, block)
     end
   end
 
   class PropsContext
-    def initialize(context_name, klass, opts)
-      @context_name = context_name
-      @klass = klass
-      @opts = opts
+    def initialize(context_name, klass, opts, block)
+      @context_name, @klass, @opts = context_name, klass, opts
+      instance_exec(&block)
     end
 
     def define(name, d_opts={})
@@ -56,7 +55,8 @@ module RedisProps
         define_method("#{d_name}") do
           instance_variable_get("@#{d_name}") || begin
             val = r[d_name].get
-            instance_variable_set("@#{d_name}", val || d_opts[:default])
+            val = val.nil? ? d_opts[:default] : PropsContext.typecaster(d_opts[:default]).call(val)
+            instance_variable_set("@#{d_name}", val)
           end
         end
         define_method("#{d_name}?") do
@@ -82,6 +82,19 @@ module RedisProps
           end
         end
         after_destroy -> { r[d_name].del }
+      end
+    end
+
+    def self.typecaster(default_value)
+      case default_value
+      when TrueClass, FalseClass
+        @boolean ||= lambda {|v| v == "true"}
+      when Float
+        @float ||= lambda {|v| v.to_f }
+      when Integer
+        @integer ||= lambda {|v| v.to_i }
+      else
+        lambda {|v| v}
       end
     end
   end

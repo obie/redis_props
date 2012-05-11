@@ -16,69 +16,73 @@ module RedisProps
       @redis_nest ||= Nest.new(name)
     end
 
-    def redis_props(context_name, &block)
-      ctx = RedisPropertyContext.new(context_name)
-      ctx.instance_exec(&block)
-      ctx.add_methods_to(self)
+    # Specifies a set of properties to be stored in Redis
+    # for this ActiveRecord object instance.
+    #
+    # Options are:
+    #   <tt>:defer</tt> - Specifies that the attributes in this context should be flushed
+    #   to Redis only when the ActiveRecord object is saved. This option defaults to +false+
+    #   and the default behavior is to read and write values to/from Redis immediately as
+    #   they are accessed.
+    #
+    #   <tt>:touch</tt> - Specifies that this ActiveRecord object's +updated_at+ field should
+    #   be updated on save (aka "touching the object") when you write new attributes values,
+    #   even if no database-backed attributes were changed. This option is occasionally
+    #   vital when dealing with cache invalidation in Rails. If you specify
+    #   a symbol (vs :true), then that attribute will be updated with the current
+    #   time instead of the updated_at/on attribute.
+    #   This option defaults to +false+.
+    #
+    def props(context_name, opts={}, &block)
+      PropsContext.new(context_name, self, opts).instance_exec(&block)
     end
   end
 
-  class RedisPropertyContext
-    def initialize(context_name)
+  class PropsContext
+    def initialize(context_name, klass, opts)
       @context_name = context_name
-      @definitions = {}
+      @klass = klass
+      @opts = opts
     end
 
-    def add_methods_to(klass)
-      @definitions.each do |definition_name, d|
-        if (TrueClass === d.options[:default] || FalseClass === d.options[:default])
-          kce = <<-end_eval
-            def #{@context_name}_#{definition_name}
-              @#{@context_name}_#{definition_name} ||= begin
-                r[:#{@context_name}][:#{definition_name}].get.tap do |result|
-                  result.nil? ? "#{d.options[:default].to_s}" : (result == "true" || result == "1")
-                end
-              end
-            end
+    def define(name, d_opts={})
+      add_methods_to(@klass, "#{@context_name}_#{name}", d_opts, @opts)
+    end
 
-            def #{@context_name}_#{definition_name}?
-              !!#{@context_name}_#{definition_name}
-            end
+    private
 
-            def #{@context_name}_#{definition_name}=(val)
-              @#{@context_name}_#{definition_name} = val
-              r[:#{@context_name}][:#{definition_name}].set val.to_s
-            end
-          end_eval
-          klass.class_eval kce
-        else
-          klass.class_eval <<-end_eval
-            def #{@context_name}_#{definition_name}
-              @#{@context_name}_#{definition_name} ||= begin
-                [:#{@context_name}][:#{definition_name}].get || "#{d.options[:default]}"
-              end
-            end
-            def #{@context_name}_#{definition_name}=(val)
-              @#{@context_name}_#{definition_name} = val
-              r[:#{@context_name}][:#{definition_name}].set val.to_s
-            end
-          end_eval
+    def add_methods_to(klass, d_name, d_opts, ctx_opts)
+      klass.class_eval do
+        define_method("#{d_name}") do
+          instance_variable_get("@#{d_name}") || begin
+            val = r[d_name].get
+            instance_variable_set("@#{d_name}", val || d_opts[:default])
+          end
         end
-        klass.class_eval <<-end_eval
-          after_destroy lambda { r[:#{@context_name}][:#{definition_name}].del }
-        end_eval
+        define_method("#{d_name}?") do
+          !!send(d_name)
+        end
+        define_method("#{d_name}=") do |val|
+          instance_variable_set("@#{d_name}", val)
+          r[d_name].set val.to_s
+          if touch = ctx_opts[:touch]
+            if touch == true
+              if respond_to?(:updated_at)
+                self.updated_at = Time.now
+              elsif respond_to?(:updated_on)
+                self.updated_at = Time.now
+              else
+                raise "updated timestamp column does not exist for use with the :touch option"
+              end
+            elsif respond_to? touch
+              send("#{touch}=", Time.now)
+            else
+              raise "#{touch} timestamp column specified as :touch option does not exist"
+            end
+          end
+        end
+        after_destroy -> { r[d_name].del }
       end
-    end
-
-    def define(name, options={})
-      @definitions[name] = Definition.new(name, options)
-    end
-  end
-
-  class Definition
-    attr_reader :options
-    def initialize(name, options)
-      @name, @options = name, options
     end
   end
 end

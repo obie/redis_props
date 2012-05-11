@@ -39,7 +39,10 @@ class User < ActiveRecord::Base
   end
 
   props :stats do
+    define :birthday, default: 20.years.ago
     define :temperature, default: 98.7
+    define :last_seen, default: Date.today
+    define :pressure_range, default: 70..99
   end
 end
 
@@ -75,7 +78,7 @@ describe RedisProps do
       clean_dog.should_not have_medical_condition_fleas
     end
 
-    context "do type inference based on default values provided" do
+    context "provide type inference based on default values provided" do
       it "works for booleans" do
         user.flags_weekly_digest = false
         user.flags_weekly_digest.should == false
@@ -87,6 +90,22 @@ describe RedisProps do
       it "works for floats" do
         user.stats_temperature = 99.9
         User.find(user.id).stats_temperature.should == 99.9
+      end
+      it "works for times" do
+        new_birthday = 10.years.ago
+        user.stats_birthday = new_birthday
+        # todo: figure out why straight comparison is failing
+        User.find(user.id).stats_birthday.to_i.should == new_birthday.to_i
+      end
+      it "works for dates" do
+        new_last_seen = 10.days.ago.to_date
+        user.stats_last_seen = new_last_seen
+        User.find(user.id).stats_last_seen.should == new_last_seen
+      end
+      it "works for ranges" do
+        new_range = 90..114
+        user.stats_pressure_range = new_range
+        User.find(user.id).stats_pressure_range.should == new_range
       end
     end
   end

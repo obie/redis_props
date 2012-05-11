@@ -93,6 +93,12 @@ module RedisProps
         @float ||= lambda {|v| v.to_f }
       when Integer
         @integer ||= lambda {|v| v.to_i }
+      when Range
+        @range ||= lambda {|v| eval(v) }
+      when Date
+        @date ||= lambda {|v| ActiveRecord::ConnectionAdapters::Column.send(:string_to_date, v) }
+      when Time
+        @time ||= lambda {|v| ActiveRecord::ConnectionAdapters::Column.send(:string_to_time, v) }
       else
         lambda {|v| v}
       end

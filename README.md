@@ -1,22 +1,24 @@
-# RedisProperties
+# RedisProps
 
-A simple way to annotate ActiveRecord objects with properties that are stored in Redis.
+A simple way to annotate ActiveRecord objects with properties that are stored in Redis instead
+of your relational database.
 Perfect for adding attributes to your models that you won't have to worry about querying
 or reporting on later. Examples include flags, preferences, etc.
 
-Plan is to include type inference based on default value specified. (Currently implemented for booleans,
-which has been our most common use-case up to now.)
+If you provide a default value for a property definition, then RedisProps provides typecasting based on the type
+inferred
 
 Properties are lazily loaded when their accessors are invoked, but saved immediately when set. In other words,
-don't rely on them to have transactional behavior along with the rest of your ActiveRecord attributes.
+don't rely on them to have transactional behavior along with the rest of your ActiveRecord attributes. (However, there
+are plans to add a transactional modes soon.)
 
-Extracted from working code in DueProps http://dueprops.com
+The current version is extracted from working code in DueProps http://dueprops.com
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'redis_properties'
+    gem 'redis_props'
 
 And then execute:
 
@@ -24,12 +26,15 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install redis_properties
+    $ gem install redis_props
 
 ## Usage
 
-The `RedisProps` module depends on a `$REDIS_SERVER` variable being set. Keys are prefixed with a namespace
-using `Redis::Namespace` and you end up with a `redis` method usable for operations not built-in to the library.
+The `RedisProps` module depends on `Redis.current` (provided by the `redis` gem) being set.
+Key names and namespaces are generated using a customized version of a 1-file library called `Nest`
+hat we bundled into this gem.
+
+To add RedisProps to your models just include `RedisProps` in your ActiveRecord class.
 
 ```ruby
 class Dog < ActiveRecord::Base
@@ -40,26 +45,46 @@ class Dog < ActiveRecord::Base
   end
 end
 
-> dog = Dog.create(name: "Fido")
+>> dog = Dog.create(name: "Fido")
+=> <Dog id: 1, name: "Fido", created_at: "2012-05-13 02:15:35", updated_at: "2012-05-13 02:15:35">
 
-> dog.has_medical_condition_fleas?
-false
+>> dog.has_medical_condition_fleas?
+=> false
 
-> dog.has_medical_condition_fleas = true
+>> dog.has_medical_condition_fleas = true
+=> true
 
-> dog = Dog.find_by_name("Fido")
+>> dog = Dog.find_by_name("Fido")
+=> <Dog id: 1, name: "Fido", created_at: "2012-05-13 02:15:35", updated_at: "2012-05-13 02:15:35">
 
-> dog.has_medical_condition_fleas?
-true
+>> dog.has_medical_condition_fleas?
+=> true
 ```
+
+In addition to the `define` method, you'll get a protected `r` method that returns a namespaced key that
+can be used for manual redis operations.
+
+```ruby
+>> dog = Dog.create
+=> <Dog id: 5, name: nil, created_at: "2012-05-13 02:15:35", updated_at: "2012-05-13 02:15:35">
+
+>> dog.send(:r)
+=> "Dog:5"
+
+>> dog.has_medical_condition_fleas = true
+=> true
+
+>> dog.send(:r).redis.keys
+=> ["Dog:5:has_medical_condition_fleas"]
+```
+
 ## TODOS
 These are ranked in order of very likely to get done soon to less likely to get done soon (or maybe not at all.)
 
-* type inference for additional types besides boolean
+* Add documentation for type inference based on default values
 * batch saving of attributes instead of instant
 * record locking and transactions
-* use Nest for generating keys
-* use Redis::Objects to wrap types
+
 
 ## Contributing
 

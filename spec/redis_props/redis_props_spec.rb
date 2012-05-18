@@ -11,6 +11,10 @@ class Dog < ActiveRecord::Base
     t.timestamps
   end
 
+  props do
+    define :nickname
+  end
+
   props :has_medical_condition do
     define :fleas, default: false
     define :pants, default: true
@@ -55,6 +59,13 @@ describe RedisProps do
   let(:clean_dog) { Dog.create!(name: "Wego") }
   let(:dirty_dog) { Dog.create!(name: "Bodiddly") }
   let(:user) { User.create!(name: "Hugo", saved_at: 1.day.ago) }
+
+  context "blank context" do
+    it do
+      clean_dog.nickname = "the amazing beer dog"
+      Dog.find_by_name("Wego").nickname.should == "the amazing beer dog"
+    end
+  end
 
   context "props options" do
     it "should touch the AR object's updated_at if touch: true" do

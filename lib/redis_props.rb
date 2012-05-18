@@ -33,7 +33,7 @@ module RedisProps
     #   time instead of the updated_at/on attribute.
     #   This option defaults to +false+.
     #
-    def props(context_name, opts={}, &block)
+    def props(context_name="", opts={}, &block)
       PropsContext.new(context_name, self, opts, block)
     end
   end
@@ -41,11 +41,12 @@ module RedisProps
   class PropsContext
     def initialize(context_name, klass, opts, block)
       @context_name, @klass, @opts = context_name, klass, opts
+      @context_name = "#{@context_name}_" unless @context_name.blank?
       instance_exec(&block)
     end
 
     def define(name, d_opts={})
-      add_methods_to(@klass, "#{@context_name}_#{name}", d_opts, @opts)
+      add_methods_to(@klass, "#{@context_name}#{name}", d_opts, @opts)
     end
 
     private

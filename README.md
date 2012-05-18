@@ -34,11 +34,17 @@ The `RedisProps` module depends on `Redis.current` (provided by the `redis` gem)
 Key names and namespaces are generated using a customized version of a 1-file library called `Nest`
 hat we bundled into this gem.
 
-To add RedisProps to your models just include `RedisProps` in your ActiveRecord class.
+To add RedisProps to your models just include `RedisProps` in your ActiveRecord class and use the
+`redis_props` method to declare extra (optionally namespaced) properties for your objects.
 
 ```ruby
 class Dog < ActiveRecord::Base
   include RedisProps
+
+  redis_props do
+    define :nickname
+    define :favorite_treat
+  end
 
   redis_props :has_medical_condition do
     define :fleas, default: false
@@ -48,6 +54,9 @@ end
 >> dog = Dog.create(name: "Fido")
 => <Dog id: 1, name: "Fido", created_at: "2012-05-13 02:15:35", updated_at: "2012-05-13 02:15:35">
 
+>> dog.nickname = "the wonder dog"
+=> "the wonder dog"
+
 >> dog.has_medical_condition_fleas?
 => false
 
@@ -56,6 +65,9 @@ end
 
 >> dog = Dog.find_by_name("Fido")
 => <Dog id: 1, name: "Fido", created_at: "2012-05-13 02:15:35", updated_at: "2012-05-13 02:15:35">
+
+>> dog.nickname
+=> "the wonder dog"
 
 >> dog.has_medical_condition_fleas?
 => true
